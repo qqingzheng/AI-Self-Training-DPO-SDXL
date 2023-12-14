@@ -9,4 +9,3 @@ This repository is based on the [*Diffusion Model Alignment Using Direct Prefere
 
 ![](assets/image-4.png)
 ![](assets/image-3.png)
-
