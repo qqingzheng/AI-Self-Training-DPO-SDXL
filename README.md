@@ -5,3 +5,8 @@
 </div>
 
 ![](assets/abstract.png)
+
+
+# Acknowledgement
+
+This work is based on the [*Diffusion Model Alignment Using Direct Preference Optimization*](https://arxiv.org/abs/2311.12908) method.

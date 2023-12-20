@@ -1039,10 +1039,10 @@ def main(args):
                 loss = -F.logsigmoid(
                     -args.dpo_beta
                     * (
-                        torch.norm(good_model_pred.float() - good_target.float())
-                        - torch.norm(good_target.float() - good_model_ref.float())
-                        - (torch.norm(bad_model_pred.float() - bad_target.float())
-                        - torch.norm(bad_target.float() - bad_model_ref.float()))
+                        torch.norm(good_model_pred.float() - good_target.float()).pow(2)
+                        - torch.norm(good_target.float() - good_model_ref.float()).pow(2)
+                        - (torch.norm(bad_model_pred.float() - bad_target.float()).pow(2)
+                        - torch.norm(bad_target.float() - bad_model_ref.float()).pow(2))
                     )
                 ).mean()
                 # Gather the losses across all processes for logging (if we use distributed training).
