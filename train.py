@@ -222,21 +222,6 @@ def parse_args(input_args=None):
         ),
     )
     parser.add_argument(
-        "--max_train_samples",
-        type=int,
-        default=None,
-        help=(
-            "For debugging purposes or quicker training, truncate the number of training examples to this "
-            "value if set."
-        ),
-    )
-    parser.add_argument(
-        "--proportion_empty_prompts",
-        type=float,
-        default=0,
-        help="Proportion of image prompts to be replaced with empty strings. Defaults to 0 (no prompt replacement).",
-    )
-    parser.add_argument(
         "--output_dir",
         type=str,
         default="sdxl-model-finetuned",
@@ -259,20 +244,6 @@ def parse_args(input_args=None):
             "The resolution for input images, all the images in the train/validation dataset will be resized to this"
             " resolution"
         ),
-    )
-    parser.add_argument(
-        "--center_crop",
-        default=False,
-        action="store_true",
-        help=(
-            "Whether to center crop the input images to the resolution. If not set, the images will be randomly"
-            " cropped. The images will be resized to the resolution first before cropping."
-        ),
-    )
-    parser.add_argument(
-        "--random_flip",
-        action="store_true",
-        help="whether to randomly flip images horizontally",
     )
     parser.add_argument(
         "--train_batch_size",
@@ -539,10 +510,7 @@ def parse_args(input_args=None):
     # Sanity checks
     if args.dataset_name is None and args.train_data_dir is None:
         raise ValueError("Need either a dataset name or a training folder.")
-
-    if args.proportion_empty_prompts < 0 or args.proportion_empty_prompts > 1:
-        raise ValueError("`--proportion_empty_prompts` must be in the range [0, 1].")
-
+    
     return args
 
 def generate_timestep_weights(args, num_timesteps):
@@ -1035,14 +1003,14 @@ def main(args):
                         f"Unknown prediction type {noise_scheduler.config.prediction_type}"
                     )
 
-                # Compute DPO Loss
+                # Compute DPO Loss. A bit different from paper for better stability.
                 loss = -F.logsigmoid(
                     -args.dpo_beta
                     * (
-                        torch.norm(good_model_pred.float() - good_target.float()).pow(2)
-                        - torch.norm(good_target.float() - good_model_ref.float()).pow(2)
-                        - (torch.norm(bad_model_pred.float() - bad_target.float()).pow(2)
-                        - torch.norm(bad_target.float() - bad_model_ref.float()).pow(2))
+                        torch.norm(good_model_pred.float() - good_target.float())
+                        - torch.norm(good_target.float() - good_model_ref.float())
+                        - (torch.norm(bad_model_pred.float() - bad_target.float())
+                        - torch.norm(bad_target.float() - bad_model_ref.float()))
                     )
                 ).mean()
                 # Gather the losses across all processes for logging (if we use distributed training).

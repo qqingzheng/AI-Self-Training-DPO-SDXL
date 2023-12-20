@@ -5,7 +5,7 @@ accelerate launch train.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --dataset_name=$DATASET_NAME \
   --enable_xformers_memory_efficient_attention \
-  --resolution=512 --center_crop --random_flip \
+  --resolution=1024 \
   --proportion_empty_prompts=0.2 \
   --train_batch_size=4 \
   --gradient_accumulation_steps=4 \
