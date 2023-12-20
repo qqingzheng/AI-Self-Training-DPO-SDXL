@@ -4,7 +4,8 @@
     [Arxiv]|<a href="https://huggingface.co/chestnutlzj/ai-self-training-dpo-sdxl">[Model]</a>
 </div>
 
-![](assets/abstract.png)
+![](assets/abstract_x1.png)
+![](assets/checkpoints.png)
 
 
 # Acknowledgement
