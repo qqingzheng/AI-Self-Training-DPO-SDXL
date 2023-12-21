@@ -2,7 +2,7 @@
 
 <div align="center">
     [Arxiv]|<a href="https://huggingface.co/chestnutlzj/ai-self-training-dpo-sdxl">[Model]</a>
-    <a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fqqingzheng%2FAI-Self-Training-DPO-SDXL&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a>
+    <a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fqqingzheng%2FAI-Self-Training-DPO-SDXL&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=Visitor&edge_flat=false"/></a>
 </div>
 
 ![](assets/abstract_x1.png)
