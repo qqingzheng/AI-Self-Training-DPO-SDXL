@@ -1,7 +1,7 @@
 # AI Feedback-Based Self-Training Direct Preference Optimization
 
 
-[![arXiv](https://img.shields.io/badge/Arxiv-2312.12999-b31b1b.svg?logo=arXiv)](comming)
+[![comming](https://img.shields.io/badge/Arxiv-comming-b31b1b.svg?logo=arXiv)](comming)
 [![HuggingFace](https://img.shields.io/badge/🤗-Open%20In%20Spaces-blue.svg)](https://huggingface.co/chestnutlzj/ai-self-training-dpo-sdxl)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fgjbae1212%2Fhit-counter)](https://hits.seeyoufarm.com)                    
 
