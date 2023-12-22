@@ -6,7 +6,7 @@ from PIL import Image
 from transformers import CLIPProcessor, CLIPModel, CLIPImageProcessor
 from scorer.aesthetic_scorer import MLP, AestheticScorer
 from scorer.clip_scorer import CLIPScorer
-from scorer.vqa_scorer import VQAScorer
+# from scorer.vqa_scorer import VQAScorer
 import torch
 import numpy as np
 from datasets import Dataset
@@ -53,7 +53,9 @@ def score_images(device, scorer_list, args, queue, result_queue):
         
 def main(args):
     # Define Scorer list
-    scorer_list = [(CLIPScorer, 0.4), (AestheticScorer, 0.2), (VQAScorer, 0.4)]
+    # scorer_list = [(CLIPScorer, 0.4), (AestheticScorer, 0.2), (VQAScorer, 0.4)]
+    scorer_list = [(CLIPScorer, 0.6), (AestheticScorer, 0.4)]
+    
     
     # Load prompts
     with open(args.prompt_path, "r") as file:
