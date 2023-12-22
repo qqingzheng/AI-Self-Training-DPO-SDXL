@@ -1,10 +1,10 @@
 class Scorer:
     def __init__(self, text, images):
         """
-        初始化Scorer对象。
+        Initialize the Scorer object.
 
-        :param text: 输入的文本。
-        :param images: 输入的图片列表。
+        :param text: The input text.
+        :param images: The input list of images.
         """
         self.text = text
         self.images = images
@@ -12,19 +12,19 @@ class Scorer:
 
     def _process_input(self):
         """
-        处理输入的文本和图片。
+        Process the input text and images.
         """
         pass
 
     def _calculate_score(self):
         """
-        计算分数。
+        Calculate the score.
         """
         pass
 
     def get_score(self):
         """
-        返回最终的分数。
+        Return the final score.
         """
         self._process_input()
         self._calculate_score()
