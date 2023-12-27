@@ -8,14 +8,14 @@ accelerate launch train.py \
   --resolution=1024 \
   --train_batch_size=4 \
   --gradient_accumulation_steps=4 \
-  --max_train_steps=3000 \
+  --max_train_steps=1000 \
   --use_8bit_adam \
   --learning_rate=1e-06 \
   --lr_scheduler="cosine" \
   --lr_warmup_steps=0 \
   --mixed_precision="fp16" \
   --report_to="wandb" \
-  --checkpointing_steps=50 \
+  --checkpointing_steps=250 \
   --output_dir="ai-st-dpo-model" \
   --good_image_column="good_jpg" \
   --bad_image_column="bad_jpg" \
