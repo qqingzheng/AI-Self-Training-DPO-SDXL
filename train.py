@@ -497,7 +497,9 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--noise_offset", type=float, default=0, help="The scale of noise offset."
     )
-
+    parser.add_argument(
+        "--sd_version", type=str, default="1.5", help="sd version"
+    )
     if input_args is not None:
         args = parser.parse_args(input_args)
     else:
@@ -560,12 +562,18 @@ def main(args):
     accelerator_project_config = ProjectConfiguration(
         project_dir=args.output_dir, logging_dir=logging_dir
     )
-
+    # 指定要使用的GPU
+    # device_placement = {
+    #     "0": "cuda:5",
+    #     "1": "cuda:6",
+    #     "2": "cuda:7"
+    # }
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision=args.mixed_precision,
         log_with=args.report_to,
         project_config=accelerator_project_config,
+        # device_placement=device_placement,
     )
 
     if args.report_to == "wandb":
@@ -607,19 +615,13 @@ def main(args):
                 token=args.hub_token,
             ).repo_id
 
-    # import correct text encoder classes
-    text_encoder_cls_one = import_model_class_from_model_name_or_path(
-        args.pretrained_model_name_or_path, args.revision
-    )
-    text_encoder_cls_two = import_model_class_from_model_name_or_path(
-        args.pretrained_model_name_or_path, args.revision, subfolder="text_encoder_2"
-    )
-
     # Load scheduler and models
     noise_scheduler = DDPMScheduler.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="scheduler"
     )
-
+    vae = AutoencoderKL.from_pretrained(
+        args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision, variant=args.variant
+    )
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path,
         subfolder="unet",
@@ -634,6 +636,7 @@ def main(args):
     )
 
     # Freeze vae and text encoders.
+    vae.requires_grad_(False)
     ref_unet.requires_grad_(False)
     # Set unet as trainable.
     unet.train()
@@ -647,8 +650,7 @@ def main(args):
     elif accelerator.mixed_precision == "bf16":
         weight_dtype = torch.bfloat16
 
-    # Move unet, vae and text_encoder to device and cast to weight_dtype
-    # The VAE is in float32 to avoid NaN losses.
+    # Move unet to device and cast to weight_dtype
     ref_unet.to(accelerator.device, dtype=weight_dtype)
 
     # Create EMA for the unet.
@@ -781,22 +783,22 @@ def main(args):
         )
         original_sizes = [example[args.good_image_column + "_original_sizes"] for example in examples]
         crop_top_lefts = [example[args.good_image_column + "_crop_top_lefts"] for example in examples]
-        
         prompt_embeds = torch.stack(
             [torch.tensor(example["prompt_embeds"]) for example in examples]
         )
-        pooled_prompt_embeds = torch.stack(
-            [torch.tensor(example["pooled_prompt_embeds"]) for example in examples]
-        )
-
-        return {
+        result = {
             "good_model_input": good_model_input,
             "bad_model_input": bad_model_input,
             "prompt_embeds": prompt_embeds,
-            "pooled_prompt_embeds": pooled_prompt_embeds,
             "original_sizes": original_sizes,
             "crop_top_lefts": crop_top_lefts,
         }
+        if args.sd_version == "xl":
+            pooled_prompt_embeds = torch.stack(
+                [torch.tensor(example["pooled_prompt_embeds"]) for example in examples]
+            )
+            result["pooled_prompt_embeds"] = pooled_prompt_embeds
+        return result
 
     # DataLoaders creation:
     train_dataloader = torch.utils.data.DataLoader(
@@ -901,8 +903,8 @@ def main(args):
         for step, batch in enumerate(train_dataloader):
             with accelerator.accumulate(unet):
                 # Sample noise that we'll add to the latents
-                good_model_input = batch["good_model_input"].to(accelerator.device)
-                bad_model_input = batch["bad_model_input"].to(accelerator.device)
+                good_model_input = batch["good_model_input"].to(accelerator.device) * vae.config.scaling_factor
+                bad_model_input = batch["bad_model_input"].to(accelerator.device) * vae.config.scaling_factor
 
                 good_noise = torch.randn_like(good_model_input)
                 bad_noise = torch.randn_like(good_model_input)
@@ -948,10 +950,11 @@ def main(args):
                 # Predict the noise residual
                 unet_added_conditions = {"time_ids": add_time_ids}
                 prompt_embeds = batch["prompt_embeds"].to(accelerator.device)
-                pooled_prompt_embeds = batch["pooled_prompt_embeds"].to(
-                    accelerator.device
-                )
-                unet_added_conditions.update({"text_embeds": pooled_prompt_embeds})
+                if args.sd_version == "xl":
+                    pooled_prompt_embeds = batch["pooled_prompt_embeds"].to(
+                        accelerator.device
+                    )
+                    unet_added_conditions.update({"text_embeds": pooled_prompt_embeds})
                 good_model_pred = unet(
                     good_noisy_model_input,
                     timesteps,

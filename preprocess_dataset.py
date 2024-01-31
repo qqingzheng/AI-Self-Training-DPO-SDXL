@@ -96,23 +96,33 @@ def encode_prompt(
                 return_tensors="pt",
             )
             text_input_ids = text_inputs.input_ids
-            prompt_embeds = text_encoder(
-                text_input_ids.to(text_encoder.device),
-                output_hidden_states=True,
-            )
-            # We are only ALWAYS interested in the pooled output of the final text encoder
-            pooled_prompt_embeds = prompt_embeds[0]
-            prompt_embeds = prompt_embeds.hidden_states[-2]
-            bs_embed, seq_len, _ = prompt_embeds.shape
-            prompt_embeds = prompt_embeds.view(bs_embed, seq_len, -1)
-            prompt_embeds_list.append(prompt_embeds)
-
+            if args.sd_version == "xl":
+                prompt_embeds = text_encoder(
+                    text_input_ids.to(text_encoder.device),
+                    output_hidden_states=True,
+                )
+                # We are only ALWAYS interested in the pooled output of the final text encoder
+                pooled_prompt_embeds = prompt_embeds[0]
+                
+                prompt_embeds = prompt_embeds.hidden_states[-2]
+                bs_embed, seq_len, _ = prompt_embeds.shape
+                prompt_embeds = prompt_embeds.view(bs_embed, seq_len, -1)
+                prompt_embeds_list.append(prompt_embeds)
+            else:
+                prompt_embeds = text_encoder(text_input_ids.to(text_encoder.device),
+                    return_dict=False)[0]
+                prompt_embeds_list.append(prompt_embeds)
     prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)
-    pooled_prompt_embeds = pooled_prompt_embeds.view(bs_embed, -1)
-    return {
-        "prompt_embeds": prompt_embeds.cpu(),
-        "pooled_prompt_embeds": pooled_prompt_embeds.cpu(),
-    }
+    if args.sd_version == "xl":
+        pooled_prompt_embeds = pooled_prompt_embeds.view(bs_embed, -1)
+        return {
+            "prompt_embeds": prompt_embeds.cpu(),
+            "pooled_prompt_embeds": pooled_prompt_embeds.cpu(),
+        }
+    else:
+        return {
+            "prompt_embeds": prompt_embeds.cpu(),
+        }
     
 def main(args):
     tokenizer_one = AutoTokenizer.from_pretrained(
@@ -121,30 +131,34 @@ def main(args):
         revision=args.revision,
         use_fast=False,
     )
-    tokenizer_two = AutoTokenizer.from_pretrained(
-        args.pretrained_model_name_or_path,
-        subfolder="tokenizer_2",
-        revision=args.revision,
-        use_fast=False,
-    )
+    if args.sd_version == "xl":
+        tokenizer_two = AutoTokenizer.from_pretrained(
+            args.pretrained_model_name_or_path,
+            subfolder="tokenizer_2",
+            revision=args.revision,
+            use_fast=False,
+        )
     text_encoder_cls_one = import_model_class_from_model_name_or_path(
         args.pretrained_model_name_or_path, args.revision
     )
-    text_encoder_cls_two = import_model_class_from_model_name_or_path(
-        args.pretrained_model_name_or_path, args.revision, subfolder="text_encoder_2"
-    )
+    if args.sd_version == "xl":
+        text_encoder_cls_two = import_model_class_from_model_name_or_path(
+            args.pretrained_model_name_or_path, args.revision, subfolder="text_encoder_2"
+        )
     text_encoder_one = text_encoder_cls_one.from_pretrained(
         args.pretrained_model_name_or_path,
         subfolder="text_encoder",
         revision=args.revision,
         variant=args.variant,
     )
-    text_encoder_two = text_encoder_cls_two.from_pretrained(
-        args.pretrained_model_name_or_path,
-        subfolder="text_encoder_2",
-        revision=args.revision,
-        variant=args.variant,
-    )
+    if args.sd_version == "xl":
+        text_encoder_two = text_encoder_cls_two.from_pretrained(
+            args.pretrained_model_name_or_path,
+            subfolder="text_encoder_2",
+            revision=args.revision,
+            variant=args.variant,
+        )
+    
     vae_path = (
         args.pretrained_model_name_or_path
         if args.pretrained_vae_model_name_or_path is None
@@ -158,11 +172,13 @@ def main(args):
     )
     vae.requires_grad_(False)
     text_encoder_one.requires_grad_(False)
-    text_encoder_two.requires_grad_(False)
+    if args.sd_version == "xl":
+        text_encoder_two.requires_grad_(False)
     weight_dtype = torch.float16
     vae.to(args.device, dtype=torch.float32)
     text_encoder_one.to(args.device, dtype=weight_dtype)
-    text_encoder_two.to(args.device, dtype=weight_dtype)
+    if args.sd_version == "xl":
+        text_encoder_two.to(args.device, dtype=weight_dtype)
 
     if args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
@@ -200,9 +216,12 @@ def main(args):
         raise ValueError(
             f"--caption_column' value '{args.caption_column}' needs to be one of: {', '.join(column_names)}"
         )
-        
-    text_encoders = [text_encoder_one, text_encoder_two]
-    tokenizers = [tokenizer_one, tokenizer_two]
+    if args.sd_version == "xl":
+        text_encoders = [text_encoder_one, text_encoder_two]
+        tokenizers = [tokenizer_one, tokenizer_two]
+    else:
+        text_encoders = [text_encoder_one]
+        tokenizers = [tokenizer_one]
 
     preprocess_train_fn = functools.partial(
         preprocess_train,
@@ -233,26 +252,49 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--pretrained_model_name_or_path", default="stable-diffusion-xl-base-1.0", type=str)
+    
+    # parser.add_argument("--pretrained_model_name_or_path", default="models/stable-diffusion-xl-base-1.0", type=str)
+    # parser.add_argument("--pretrained_vae_model_name_or_path", default=None, type=str)
+    # parser.add_argument("--dataset_name", default="dataset/ccd_ai_feedback", type=str)
+    # parser.add_argument("--resolution", default=512, type=int)
+    # parser.add_argument("--center_crop", action='store_true')
+    # parser.add_argument("--random_flip", action='store_true')
+    # parser.add_argument("--caption_column", default="caption", type=str)
+    # parser.add_argument("--good_image_column", default="good_jpg", type=str)
+    # parser.add_argument("--bad_image_column", default="bad_jpg", type=str)
+    # parser.add_argument("--output_dir", default="dataset/ccd_ai_feedbacks", type=str)
+    # parser.add_argument("--proportion_empty_prompts", default=0, type=int)
+    # parser.add_argument("--train_data_dir", default=None, type=str)
+    # parser.add_argument("--dataset_config_name", default=None, type=str)
+    # parser.add_argument("--variant", default=None, type=str)
+    # parser.add_argument("--revision", default=None, type=str)
+    # parser.add_argument("--device", default="cuda:5", type=str)
+    # parser.add_argument("--max_train_samples", default=None, type=int)
+    # parser.add_argument("--seed", default=1234, type=int)
+    # parser.add_argument("--batch_size", default=32, type=int)
+    # parser.add_argument("--sd_version", default="1.5", type=str)
+
+    parser.add_argument("--pretrained_model_name_or_path", default="models/stable-diffusion-xl-base-1.0", type=str)
     parser.add_argument("--pretrained_vae_model_name_or_path", default=None, type=str)
-    parser.add_argument("--dataset_name", default="dataset/ai_feedback", type=str)
+    parser.add_argument("--dataset_name", default="dataset/ccd_ai_feedback", type=str)
     parser.add_argument("--resolution", default=1024, type=int)
     parser.add_argument("--center_crop", action='store_true')
     parser.add_argument("--random_flip", action='store_true')
     parser.add_argument("--caption_column", default="caption", type=str)
     parser.add_argument("--good_image_column", default="good_jpg", type=str)
     parser.add_argument("--bad_image_column", default="bad_jpg", type=str)
-    parser.add_argument("--output_dir", default="ai_feedbacks", type=str)
+    parser.add_argument("--output_dir", default="dataset/ccd_ai_feedbacks", type=str)
     parser.add_argument("--proportion_empty_prompts", default=0, type=int)
     parser.add_argument("--train_data_dir", default=None, type=str)
     parser.add_argument("--dataset_config_name", default=None, type=str)
     parser.add_argument("--variant", default=None, type=str)
     parser.add_argument("--revision", default=None, type=str)
-    parser.add_argument("--device", default="cuda:0", type=str)
+    parser.add_argument("--device", default="cuda:1", type=str)
     parser.add_argument("--max_train_samples", default=None, type=int)
     parser.add_argument("--seed", default=1234, type=int)
-    parser.add_argument("--batch_size", default=16, type=int)
-    
+    parser.add_argument("--batch_size", default=8, type=int)
+    parser.add_argument("--sd_version", default="xl", type=str)
+
 
     args = parser.parse_args()
     
