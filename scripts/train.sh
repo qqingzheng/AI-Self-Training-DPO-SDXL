@@ -10,7 +10,7 @@ accelerate launch train.py \
   --gradient_accumulation_steps=4 \
   --max_train_steps=1000 \
   --use_8bit_adam \
-  --learning_rate=1e-06 \
+  --learning_rate=5e-07 \
   --lr_scheduler="cosine" \
   --lr_warmup_steps=0 \
   --mixed_precision="fp16" \
