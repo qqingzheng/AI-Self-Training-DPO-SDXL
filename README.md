@@ -1,3 +1,7 @@
+# Better version
+
+The version I have implemented does not have strict code specifications and may have issues. For a more professional version, please refer to the official diffusers repository: [train_diffusion_dpo_sdxl.py](https://github.com/huggingface/diffusers/blob/main/examples/research_projects/diffusion_dpo/train_diffusion_dpo_sdxl.py)
+
 # AI Feedback-Based Self-Training Direct Preference Optimization
 
 
